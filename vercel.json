@@ -1,53 +1,31 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "backend/app/main.py",
-      "use": "@vercel/python"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "app": {
+      "root": ".",
+      "runtime": "python"
     },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+    "backend": {
+      "root": "backend",
+      "framework": "fastapi"
+    },
+    "frontend": {
+      "root": "frontend",
+      "framework": "vite"
     }
-  ],
-  "routes": [
+  },
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/backend/app/main.py"
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "backend"
+      }
     },
     {
-      "src": "/docs",
-      "dest": "/backend/app/main.py"
-    },
-    {
-      "src": "/docs/(.*)",
-      "dest": "/backend/app/main.py"
-    },
-    {
-      "src": "/redoc",
-      "dest": "/backend/app/main.py"
-    },
-    {
-      "src": "/redoc/(.*)",
-      "dest": "/backend/app/main.py"
-    },
-    {
-      "src": "/openapi.json",
-      "dest": "/backend/app/main.py"
-    },
-    {
-      "src": "/health",
-      "dest": "/backend/app/main.py"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/dist/index.html"
+      "source": "/(.*)",
+      "destination": {
+        "service": "app"
+      }
     }
   ]
 }
