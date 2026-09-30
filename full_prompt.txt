@@ -1,0 +1,1587 @@
+<USER_REQUEST>
+Build a complete, modern, production-ready full-stack web application called **“AirIndex India”** based on the following problem statement:
+
+**Development of a Real-Time Airfare Price Index for India through Automated Web Scraping of Permitted Airline and Online Travel Sources.**
+
+The platform should collect, clean, analyze and visualize Indian domestic airfare data and calculate a Real-Time Airfare Price Index.
+
+The application must use **only an SQL database** for persistent data storage. Do not use MongoDB, Firebase Firestore, Redis as a database, or any NoSQL database.
+
+---
+
+# 1. MAIN OBJECTIVE
+
+Create a web platform that:
+
+* Collects airfare data from permitted airline and OTA sources.
+* Stores raw and processed airfare observations in an SQL database.
+* Supports important Indian domestic routes.
+* Tracks multiple advance-booking windows:
+
+  * T+1
+  * T+7
+  * T+15
+  * T+30
+  * T+45
+* Cleans and normalizes collected data.
+* Calculates a weighted Airfare Price Index.
+* Displays daily, weekly and monthly index values.
+* Provides route-wise and airline-wise analytics.
+* Provides authorized API access.
+* Supports historical data and approximately 30-day back-testing.
+* Provides a professional interactive dashboard.
+
+---
+
+# 2. TECHNOLOGY STACK
+
+## Frontend
+
+Use:
+
+* React.js
+* Vite
+* JavaScript
+* HTML5
+* CSS3
+* Tailwind CSS
+* React Router
+* Axios
+* Recharts or Plotly
+
+## Backend
+
+Use:
+
+* Python
+* FastAPI
+* Pydantic
+* SQLAlchemy
+
+## Database — SQL ONLY
+
+Use **PostgreSQL** as the primary and only database.
+
+The application must be designed so that PostgreSQL can be replaced with another SQL database such as MySQL through configuration if required.
+
+Use SQLAlchemy ORM for database operations.
+
+Do NOT use:
+
+* MongoDB
+* Firebase Firestore
+* DynamoDB
+* CouchDB
+* Redis as a database
+* Any other NoSQL database
+
+Redis must NOT be required for the application.
+
+---
+
+# 3. AUTHENTICATION SYSTEM
+
+Implement a complete authentication system with three supported methods:
+
+## A. Google Authentication
+
+Provide:
+
+**Continue with Google**
+
+Use Google OAuth 2.0 / OpenID Connect.
+
+After successful Google authentication:
+
+* Create the user in the SQL database if the user does not already exist.
+* If the user already exists, log them into the existing account.
+* Store the Google account identifier securely.
+* Never store the user's Google password.
+* Retrieve only the required profile information such as:
+
+  * Name
+  * Email
+  * Profile picture if required
+  * Google account ID
+
+Use environment variables for Google OAuth credentials.
+
+Example:
+
+```env
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=
+```
+
+Never hard-code OAuth credentials.
+
+---
+
+# 4. EMAIL OTP AUTHENTICATION
+
+Provide an alternative:
+
+**Continue with Email**
+
+The user enters their email address.
+
+The system sends a verification OTP to the user's email.
+
+Example flow:
+
+```text
+Enter Email
+     ↓
+Send OTP
+     ↓
+Enter OTP
+     ↓
+Verify OTP
+     ↓
+Create/Login Account
+     ↓
+Dashboard
+```
+
+OTP requirements:
+
+* 6-digit OTP
+* OTP expires after a configurable period such as 5 minutes
+* OTP can only be used once
+* Limit OTP resend requests
+* Limit incorrect OTP attempts
+* Store only a secure hash of the OTP where practical
+* Never expose OTP in frontend responses
+* Never log OTP values in production
+
+Email delivery can use SMTP.
+
+Create configuration:
+
+```env
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=
+```
+
+The email should contain:
+
+```text
+AirIndex India
+
+Your verification OTP is: ******
+
+This OTP is valid for 5 minutes.
+
+If you did not request this code, please ignore this email.
+```
+
+---
+
+# 5. EMAIL/PASSWORD REGISTRATION
+
+Also provide normal email registration if required.
+
+Registration form:
+
+* Full Name
+* Email
+* Password
+* Confirm Password
+
+After registration:
+
+```text
+Register
+   ↓
+Send Email OTP
+   ↓
+Enter OTP
+   ↓
+Email Verified
+   ↓
+Account Activated
+   ↓
+Login
+```
+
+Do not activate an account until email verification is completed.
+
+Passwords must be securely hashed using a strong password hashing algorithm such as bcrypt/Argon2.
+
+Never store plain-text passwords.
+
+---
+
+# 6. FORGOT PASSWORD WITH OTP
+
+Implement a complete forgot-password flow.
+
+Login page must contain:
+
+**Forgot Password?**
+
+Flow:
+
+```text
+Forgot Password
+       ↓
+Enter Registered Email
+       ↓
+Send OTP
+       ↓
+Enter OTP
+       ↓
+Verify OTP
+       ↓
+Create New Password
+       ↓
+Confirm New Password
+       ↓
+Password Updated
+       ↓
+Login
+```
+
+OTP requirements:
+
+* 6 digits
+* Expiration time
+* One-time use
+* Resend protection
+* Attempt limit
+* Secure storage
+* No OTP displayed in API responses
+
+After successful password reset:
+
+```text
+Password changed successfully.
+Please login with your new password.
+```
+
+Invalidate existing password-reset OTPs after successful reset.
+
+---
+
+# 7. AUTHENTICATION DATABASE TABLES
+
+Store authentication data in the SQL database.
+
+Create appropriate tables such as:
+
+### users
+
+```text
+id
+name
+email
+password_hash
+google_id
+profile_image
+role
+email_verified
+auth_provider
+is_active
+created_at
+updated_at
+last_login
+```
+
+### otp_verifications
+
+```text
+id
+user_id
+email
+otp_hash
+purpose
+expires_at
+attempt_count
+is_used
+created_at
+verified_at
+```
+
+Purpose values:
+
+```text
+EMAIL_VERIFICATION
+LOGIN_OTP
+PASSWORD_RESET
+```
+
+### oauth_accounts
+
+```text
+id
+user_id
+provider
+provider_account_id
+created_at
+```
+
+Use SQL foreign keys and indexes.
+
+---
+
+# 8. JWT AUTHENTICATION
+
+After successful authentication, issue a secure JWT access token.
+
+Use:
+
+```text
+Authorization: Bearer <token>
+```
+
+Implement:
+
+* JWT authentication
+* Token expiration
+* Protected routes
+* Role-based authorization
+* Secure token validation
+
+Frontend should store authentication securely.
+
+Do not expose secret keys in frontend code.
+
+Use:
+
+```env
+JWT_SECRET_KEY=
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=
+```
+
+---
+
+# 9. USER ROLES
+
+Implement:
+
+### Admin
+
+Can:
+
+* Manage users
+* Manage routes
+* Manage airlines
+* Manage data sources
+* Manage route weights
+* Configure collection schedules
+* View scraper logs
+* View data-quality information
+* Trigger demo collection
+* Recalculate indexes
+
+### Analyst
+
+Can:
+
+* View dashboards
+* Analyze routes
+* Analyze airlines
+* View historical data
+* View index information
+* Export permitted datasets
+* View backtesting
+
+### Viewer
+
+Can:
+
+* View dashboards
+* View index
+* View route analytics
+* View charts
+* View permitted historical information
+
+A normal user must NEVER be allowed to select the Admin role during registration.
+
+---
+
+# 10. PROJECT STRUCTURE
+
+Create:
+
+```text
+airindex-india/
+
+frontend/
+    src/
+        components/
+        pages/
+        layouts/
+        charts/
+        services/
+        hooks/
+        utils/
+        contexts/
+        auth/
+        App.jsx
+        main.jsx
+
+backend/
+    app/
+        api/
+        core/
+        models/
+        schemas/
+        services/
+        scrapers/
+        analytics/
+        index_engine/
+        database/
+        workers/
+        auth/
+        email/
+        utils/
+        main.py
+
+scrapers/
+    airlines/
+    ota/
+    common/
+
+tests/
+    backend/
+    frontend/
+
+docs/
+
+docker/
+
+.env.example
+
+README.md
+
+docker-compose.yml
+```
+
+---
+
+# 11. WEBSITE PAGES
+
+Create:
+
+### Public Pages
+
+* Landing Page
+* About
+* Methodology
+* Login
+* Register
+* Forgot Password
+* Verify OTP
+* Reset Password
+
+### Protected Pages
+
+* Dashboard
+* Airfare Index
+* Route Analytics
+* Airline Analytics
+* Booking Window
+* Heatmap
+* Historical Data
+* Data Quality
+* Scraper Status
+* Backtesting
+* API Documentation
+* Profile
+* Settings
+
+---
+
+# 12. LOGIN PAGE
+
+Create a professional login page.
+
+Options:
+
+```text
+Welcome to AirIndex India
+
+Email
+[________________]
+
+Password
+[________________]
+
+[ Login ]
+
+Forgot Password?
+
+---------------- OR ----------------
+
+[ Continue with Google ]
+
+Don't have an account?
+Create Account
+```
+
+Use proper validation and error messages.
+
+---
+
+# 13. REGISTER PAGE
+
+Create:
+
+```text
+Create your AirIndex India account
+
+Full Name
+Email
+Password
+Confirm Password
+
+[ Create Account ]
+
+---------------- OR ----------------
+
+[ Continue with Google ]
+
+Already have an account?
+Login
+```
+
+After email registration, redirect to OTP verification.
+
+---
+
+# 14. OTP VERIFICATION PAGE
+
+Create:
+
+```text
+Verify Your Email
+
+We sent a 6-digit verification code to:
+
+example@email.com
+
+[ _ ][ _ ][ _ ][ _ ][ _ ][ _ ]
+
+[ Verify OTP ]
+
+Didn't receive the code?
+
+[ Resend OTP ]
+
+OTP expires in:
+04:32
+```
+
+Add:
+
+* Countdown timer
+* Resend cooldown
+* Invalid OTP error
+* Expired OTP error
+* Too many attempts error
+
+---
+
+# 15. DASHBOARD
+
+Create:
+
+```text
+Current Airfare Index
+118.42
+
+Daily Change
++2.4%
+
+Weekly Change
++3.8%
+
+Monthly Change
++6.8%
+
+Total Observations
+125,480
+
+Active Routes
+25
+
+Active Sources
+8
+```
+
+Clearly mark synthetic/demo values as:
+
+**DEMO DATA**
+
+until actual permitted airfare data is available.
+
+---
+
+# 16. AIRFARE INDEX
+
+Create an interactive Airfare Price Index page.
+
+Show:
+
+* Current index
+* Base period
+* Daily index
+* Weekly index
+* Monthly index
+* Index change
+* Route contribution
+
+Charts:
+
+* Daily index trend
+* Weekly trend
+* Monthly trend
+* Route contribution
+
+Use the configurable weighted-index formula.
+
+---
+
+# 17. ROUTE ANALYTICS
+
+Support routes such as:
+
+```text
+DEL-BOM
+DEL-BLR
+BOM-BLR
+DEL-CCU
+BLR-HYD
+MAA-DEL
+DEL-HYD
+BOM-DEL
+BLR-MAA
+HYD-DEL
+```
+
+Display:
+
+* Average fare
+* Median fare
+* Minimum fare
+* Maximum fare
+* Volatility
+* Availability
+
+Charts:
+
+* Fare trend
+* Airline comparison
+* Booking-window comparison
+* Base fare vs taxes
+* Price distribution
+
+---
+
+# 18. BOOKING WINDOW ANALYSIS
+
+Display:
+
+```text
+T+1
+T+7
+T+15
+T+30
+T+45
+```
+
+Create an interactive chart showing airfare variation against booking lead time.
+
+---
+
+# 19. ROUTE HEATMAP
+
+Create:
+
+* Origin/destination matrix
+* Fare value
+* Percentage change
+* Index contribution
+
+Allow filtering by:
+
+* Date
+* Airline
+* Booking window
+
+---
+
+# 20. AIRLINE ANALYTICS
+
+Include:
+
+* IndiGo
+* Air India
+* Air India Express
+* Akasa Air
+* SpiceJet
+
+Show factual measured statistics such as:
+
+* Average fare
+* Median fare
+* Observations
+* Availability
+* Route coverage
+* Volatility
+
+---
+
+# 21. DATA COLLECTION
+
+Create:
+
+```text
+/data-collection
+```
+
+Display:
+
+Source
+Status
+Last Collection
+Next Collection
+Records
+Success Rate
+Error Rate
+
+Example statuses:
+
+```text
+ACTIVE
+RATE LIMITED
+UNAVAILABLE
+PARSER ERROR
+DEMO MODE
+```
+
+---
+
+# 22. RESPONSIBLE SCRAPING
+
+Use:
+
+* Python
+* Scrapy
+* Playwright
+
+Create a common scraper interface:
+
+```python
+class BaseScraper:
+    def fetch():
+        pass
+
+    def parse():
+        pass
+
+    def normalize():
+        pass
+
+    def validate():
+        pass
+
+    def save():
+        pass
+```
+
+Create adapters:
+
+```text
+IndigoAdapter
+AirIndiaAdapter
+AirIndiaExpressAdapter
+AkasaAdapter
+SpiceJetAdapter
+DemoAirfareAdapter
+```
+
+Do NOT implement:
+
+* CAPTCHA bypassing
+* unauthorized access
+* credential theft
+* security bypassing
+* stealth techniques intended to evade security controls
+
+Implement:
+
+* rate limiting
+* request delays
+* robots.txt checks where applicable
+* retry limits
+* source status tracking
+* error logging
+* automatic stopping when access is blocked
+
+If real collection is unavailable, use:
+
+**DemoAirfareAdapter**
+
+---
+
+# 23. SQL DATABASE MODELS
+
+Use SQLAlchemy and PostgreSQL.
+
+Required tables:
+
+### users
+
+```text
+id
+name
+email
+password_hash
+google_id
+profile_image
+role
+email_verified
+auth_provider
+is_active
+created_at
+updated_at
+last_login
+```
+
+### otp_verifications
+
+```text
+id
+user_id
+email
+otp_hash
+purpose
+expires_at
+attempt_count
+is_used
+created_at
+verified_at
+```
+
+### oauth_accounts
+
+```text
+id
+user_id
+provider
+provider_account_id
+created_at
+```
+
+### routes
+
+```text
+id
+origin
+destination
+route_code
+weight
+base_fare
+base_date
+active
+created_at
+```
+
+### airlines
+
+```text
+id
+name
+code
+active
+```
+
+### sources
+
+```text
+id
+name
+type
+status
+last_run
+next_run
+rate_limit
+enabled
+```
+
+### fare_observations
+
+```text
+id
+collection_timestamp
+travel_date
+origin
+destination
+airline
+source
+flight_number
+fare_class
+booking_window
+base_fare
+taxes
+fees
+total_fare
+availability
+```
+
+### index_values
+
+```text
+id
+date
+frequency
+index_value
+base_period
+```
+
+### collection_logs
+
+```text
+id
+source
+started_at
+completed_at
+status
+records
+errors
+```
+
+### data_quality
+
+```text
+id
+date
+total_records
+valid_records
+duplicates
+missing_values
+outliers
+```
+
+Use proper:
+
+* Primary keys
+* Foreign keys
+* Unique constraints
+* Indexes
+* Timestamps
+
+---
+
+# 24. NO REDIS DATABASE
+
+Do NOT add Redis as a database.
+
+For scheduled jobs use:
+
+**APScheduler**
+
+For caching, initially use normal backend/database mechanisms only.
+
+If background processing is required, keep it simple and use FastAPI background tasks or APScheduler.
+
+Do not make Redis mandatory.
+
+---
+
+# 25. INDEX ENGINE
+
+Implement:
+
+```text
+APIx(t) =
+Σ(Wi × Pi,t / Pi,base) × 100
+```
+
+Where:
+
+```text
+Wi = route weight
+Pi,t = representative fare
+Pi,base = base-period fare
+```
+
+Route weights must come from the SQL database.
+
+Do not hard-code weights.
+
+Admin should be able to update:
+
+* Route
+* Weight
+* Base period
+* Base fare
+* Active status
+
+---
+
+# 26. HISTORICAL DATA
+
+Create a searchable SQL-backed table.
+
+Columns:
+
+```text
+Timestamp
+Travel Date
+Origin
+Destination
+Airline
+Source
+Booking Window
+Fare Class
+Base Fare
+Taxes
+Fees
+Total Fare
+Availability
+```
+
+Features:
+
+* Search
+* Sorting
+* Filtering
+* Pagination
+* Date range
+* CSV export
+* JSON export
+
+---
+
+# 27. DATA QUALITY
+
+Create a data-quality dashboard showing:
+
+```text
+Total Records
+Valid Records
+Duplicates
+Missing Values
+Outliers
+Sold-Out Flights
+Parser Errors
+```
+
+Use charts and tables.
+
+---
+
+# 28. BACKTESTING
+
+Create:
+
+```text
+/backtesting
+```
+
+Allow:
+
+* Date selection
+* Route selection
+* Benchmark selection
+
+Calculate:
+
+* MAE
+* RMSE
+* MAPE where appropriate
+* Correlation
+
+Display:
+
+```text
+AirIndex India
+vs
+Benchmark Dataset
+```
+
+Clearly identify benchmark data and synthetic/demo data.
+
+Do not claim the developed index is the official CPI.
+
+---
+
+# 29. API
+
+Create FastAPI endpoints:
+
+```text
+GET /api/index/current
+GET /api/index/daily
+GET /api/index/weekly
+GET /api/index/monthly
+
+GET /api/routes
+GET /api/routes/{route}/prices
+GET /api/routes/{route}/trend
+
+GET /api/airlines
+GET /api/booking-windows
+
+GET /api/heatmap
+GET /api/data-quality
+GET /api/sources/status
+```
+
+Authentication endpoints:
+
+```text
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/google
+POST /api/auth/send-otp
+POST /api/auth/verify-otp
+POST /api/auth/forgot-password
+POST /api/auth/verify-reset-otp
+POST /api/auth/reset-password
+POST /api/auth/refresh
+POST /api/auth/logout
+GET  /api/auth/me
+```
+
+Generate FastAPI Swagger documentation.
+
+---
+
+# 30. EMAIL SERVICE
+
+Create an email service using SMTP.
+
+Functions:
+
+```text
+send_verification_otp()
+send_password_reset_otp()
+send_login_otp()
+```
+
+Use environment variables:
+
+```env
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=
+```
+
+Never hard-code credentials.
+
+Create professional HTML email templates.
+
+---
+
+# 31. SECURITY
+
+Implement:
+
+* JWT authentication
+* bcrypt/Argon2 password hashing
+* OTP expiration
+* OTP attempt limits
+* OTP resend limits
+* Secure password reset
+* Google OAuth
+* CORS
+* SQL injection protection
+* Pydantic validation
+* API rate limiting
+* Secure HTTP headers
+* Environment variables
+* Role-based authorization
+
+Never store:
+
+* Plain passwords
+* Plain OTPs where secure hashing is possible
+* Google passwords
+* API secrets in frontend code
+
+---
+
+# 32. DEMO DATA
+
+Create a synthetic airfare generator.
+
+Generate:
+
+* 30–90 days
+* 10–25 routes
+* 5 airlines
+* 5 booking windows
+* Multiple observations
+
+Include realistic variations based on:
+
+* Route
+* Airline
+* Booking window
+* Day of week
+* Demand
+* Seasonal variation
+* Random variation
+
+Every synthetic record must be identifiable as:
+
+```text
+DEMO / SYNTHETIC DATA
+```
+
+Do not present synthetic values as real collected prices.
+
+---
+
+# 33. UI DESIGN
+
+Create a professional, modern statistical analytics interface.
+
+Design:
+
+* Clean
+* Minimal
+* Responsive
+* Data-focused
+* Professional
+* Easy to understand
+
+Use:
+
+* Light background
+* Dark text
+* Cards
+* Tables
+* Charts
+* Clear typography
+* Consistent spacing
+* Responsive navigation
+
+Support:
+
+Desktop
+Tablet
+Mobile
+
+---
+
+# 34. ERROR HANDLING
+
+Frontend:
+
+* Loading states
+* Empty states
+* API errors
+* Network errors
+* Authentication errors
+* OTP errors
+* Session expiration
+
+Backend:
+
+* Structured errors
+* Validation errors
+* Database errors
+* Authentication errors
+* OAuth errors
+* Email errors
+* Scraper errors
+
+---
+
+# 35. TESTING
+
+Use:
+
+* PyTest
+* Jest
+
+Test:
+
+* Registration
+* Login
+* Google authentication flow
+* Email OTP
+* OTP expiration
+* OTP attempt limits
+* Forgot password
+* Password reset
+* JWT authentication
+* Role permissions
+* Database models
+* Fare validation
+* Duplicate detection
+* Outlier detection
+* Index calculation
+* API endpoints
+* Scraper adapters
+
+---
+
+# 36. DOCKER
+
+Create Docker configuration for:
+
+```text
+frontend
+backend
+postgres
+```
+
+Do NOT include Redis.
+
+Create:
+
+```text
+docker-compose.yml
+```
+
+The application should run using:
+
+```bash
+docker compose up --build
+```
+
+Provide a PostgreSQL database through Docker.
+
+---
+
+# 37. ENVIRONMENT VARIABLES
+
+Create:
+
+```env
+DATABASE_URL=
+
+JWT_SECRET_KEY=
+JWT_ALGORITHM=
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=
+
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=
+
+FRONTEND_URL=
+BACKEND_URL=
+```
+
+Create `.env.example`.
+
+Never commit `.env`.
+
+---
+
+# 38. README
+
+Create a complete README containing:
+
+* Project overview
+* Problem statement
+* Features
+* Architecture
+* Technology stack
+* SQL database setup
+* Google OAuth setup
+* SMTP setup
+* Email OTP setup
+* Forgot-password setup
+* Environment variables
+* Installation
+* Running frontend
+* Running backend
+* Demo data generation
+* Scraper configuration
+* Index methodology
+* API documentation
+* Testing
+* Docker setup
+* Responsible scraping policy
+* Limitations
+* Future improvements
+
+---
+
+# 39. FINAL USER FLOW
+
+### New user with Email
+
+```text
+Landing Page
+      ↓
+Register
+      ↓
+Enter Name + Email + Password
+      ↓
+Email OTP
+      ↓
+Verify OTP
+      ↓
+Account Created
+      ↓
+Login
+      ↓
+Dashboard
+```
+
+### Existing user with Google
+
+```text
+Login
+   ↓
+Continue with Google
+   ↓
+Google Authentication
+   ↓
+Create/Find SQL User
+   ↓
+Dashboard
+```
+
+### Forgot Password
+
+```text
+Login
+   ↓
+Forgot Password
+   ↓
+Enter Email
+   ↓
+OTP Sent
+   ↓
+Verify OTP
+   ↓
+New Password
+   ↓
+Password Updated
+   ↓
+Login
+```
+
+---
+
+# 40. FINAL DEMO FLOW
+
+The evaluator should be able to:
+
+1. Open AirIndex India.
+2. Register using email.
+3. Receive email OTP.
+4. Verify email.
+5. Login.
+6. Logout.
+7. Login again using Google.
+8. Open dashboard.
+9. View Airfare Price Index.
+10. Select a route.
+11. View historical airfare.
+12. Select booking window.
+13. Compare airline data.
+14. View route heatmap.
+15. View data-quality statistics.
+16. View scraper status.
+17. Generate demo airfare data.
+18. Recalculate the index.
+19. View 30-day backtesting.
+20. Export data.
+21. Open API documentation.
+22. Test Forgot Password.
+23. Receive password-reset OTP.
+24. Reset password successfully.
+
+---
+
+# 41. DEVELOPMENT RULES
+
+* Use ONLY SQL for persistent application data.
+* PostgreSQL is the primary database.
+* Do not use MongoDB.
+* Do not use Firebase.
+* Do not use Redis.
+* Do not use NoSQL.
+* Use SQLAlchemy ORM.
+* Use Google OAuth for Google login.
+* Use email OTP for email verification.
+* Use email OTP for password reset.
+* Use secure password hashing.
+* Do not store plain-text passwords.
+* Do not expose OTP values through APIs.
+* Do not hard-code secrets.
+* Do not create fake Google login buttons that do nothing.
+* Implement the actual authentication flow.
+* Do not create fake OTP verification that accepts any number.
+* Demo data must be clearly marked as synthetic.
+* Keep real scraping and demo scraping separate.
+* Follow responsible data collection.
+* Do not bypass CAPTCHA or website security.
+* Build reusable components.
+* Keep frontend and backend modular.
+* Use proper database relationships.
+* Add validation and error handling.
+* Test the complete authentication flow.
+* Fix all frontend compilation errors and backend runtime errors before completion.
+
+---
+
+# 42. EXPECTED FINAL RESULT
+
+Deliver a complete working application consisting of:
+
+**Frontend**
+React + Vite + Tailwind CSS
+
+**Backend**
+FastAPI + Python
+
+**Database**
+PostgreSQL / SQL only
+
+**Authentication**
+Google OAuth + Email OTP + JWT
+
+**Password Recovery**
+Email OTP
+
+**Data Processing**
+Pandas + NumPy
+
+**Scraping**
+Scrapy + Playwright
+
+**Visualization**
+Recharts / Plotly
+
+**Scheduling**
+APScheduler
+
+**Testing**
+PyTest + Jest
+
+**Deployment**
+Docker
+
+The final application should look and behave like a professional **Indian airfare statistical intelligence and monitoring platform**, with fully functional authentication, SQL database integration, airfare analytics, index calculation, historical data, backtesting and dashboard function
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-09-29T19:04:42+05:30.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Gemini 3.8 Flash (Medium). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>
