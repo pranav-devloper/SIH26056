@@ -1,21 +1,53 @@
 {
-  "services": {
-    "my_frontend": {
-      "root": "frontend/"
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/app/main.py",
+      "use": "@vercel/python"
     },
-    "my_backend": {
-      "root": "backend/",
-      "entrypoint": "main:app"
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     }
-  },
-  "rewrites": [
+  ],
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": { "service": "my_backend" }
+      "src": "/api/(.*)",
+      "dest": "/backend/app/main.py"
     },
     {
-      "source": "/(.*)",
-      "destination": { "service": "my_frontend" }
+      "src": "/docs",
+      "dest": "/backend/app/main.py"
+    },
+    {
+      "src": "/docs/(.*)",
+      "dest": "/backend/app/main.py"
+    },
+    {
+      "src": "/redoc",
+      "dest": "/backend/app/main.py"
+    },
+    {
+      "src": "/redoc/(.*)",
+      "dest": "/backend/app/main.py"
+    },
+    {
+      "src": "/openapi.json",
+      "dest": "/backend/app/main.py"
+    },
+    {
+      "src": "/health",
+      "dest": "/backend/app/main.py"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/dist/index.html"
     }
   ]
 }
